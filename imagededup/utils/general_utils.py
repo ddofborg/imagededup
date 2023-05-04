@@ -71,7 +71,8 @@ def parallelise(function: Callable, data: List, verbose: bool, num_workers: int)
     return results
 
 
-def generate_files(image_dir: Union[PurePath, str], recursive: bool) -> List:
+def generate_files(image_dir: Union[PurePath, str], recursive: bool, extensions: set = None) -> List:
+    extensions = extensions or set(['.jpg', '.jpeg', '.png', '.bmp', '.mpo', '.ppm', '.tiff', '.gif', '.webp'])
     if recursive:
         glob_pattern = '**/*'
     else:
@@ -80,7 +81,8 @@ def generate_files(image_dir: Union[PurePath, str], recursive: bool) -> List:
     return [
         i.absolute()
         for i in Path(image_dir).glob(glob_pattern)
-        if not (i.name.startswith('.') or i.is_dir())
+            if (not (i.name.startswith('.') or i.is_dir())) and (len(extensions)==0 or i.suffix.lower() in extensions)
+
     ]
 
 

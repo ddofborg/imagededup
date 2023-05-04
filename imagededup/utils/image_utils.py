@@ -157,5 +157,5 @@ def load_image(
             return img
 
     except Exception as e:
-        logger.warning(f'Invalid image file {image_file}:\n{e}')
+        logger.warning(f'Invalid image file {image_file}: {e}')
         return None

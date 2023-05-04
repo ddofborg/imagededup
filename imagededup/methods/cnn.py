@@ -1,5 +1,6 @@
 from pathlib import Path, PurePath
 import sys
+import pickle
 from typing import Dict, List, Optional, Union
 import warnings
 
@@ -7,6 +8,8 @@ from multiprocessing import cpu_count
 import numpy as np
 from PIL import Image
 import torch
+
+import tqdm
 
 from imagededup.handlers.search.retrieval import get_cosine_similarity
 from imagededup.utils.data_generator import img_dataloader
@@ -132,7 +135,7 @@ class CNN:
         Returns:
             A dictionary that contains a mapping of filenames and corresponding numpy array of CNN encodings.
         """
-        self.logger.info("Start: Image encoding generation")
+        self.logger.info("Start: Image encoding generation...")
         self.dataloader = img_dataloader(
             image_dir=image_dir,
             batch_size=self.batch_size,
@@ -141,20 +144,41 @@ class CNN:
             num_workers=num_workers,
         )
 
-        feat_arr, all_filenames = [], []
+        feat_arr, all_filenames, all_bad_images = [], [], []
         bad_im_count = 0
 
         with torch.no_grad():
-            for ims, filenames, bad_images in self.dataloader:
-                arr = self.model(ims.to(self.device))
-                feat_arr.extend(arr)
-                all_filenames.extend(filenames)
+            # ims = list of image tensors, filenames = list of PosixPath filenames to be encoded, encoded_ims=already loaded encodings from cache, filenames_encoded=file names which were loaded from cache
+            for ims, filenames, bad_images, filenames_encoded in tqdm.tqdm(self.dataloader, unit='batches', desc=f'Batches of {self.batch_size}'):
+                # arr = list of encoded image models
+                # generate new
+                if ims is not None:
+                    arr = self.model(ims.to(self.device))
+                    # feat_arr.extend(arr)
+                    all_filenames.extend(filenames)
+                    # cacehe all new encodings
+                    for _arr, _filename in zip(arr, filenames):
+                        # self.logger.info('Caching: %s', _filename)
+                        pickle.dump(_arr, open(_filename.with_suffix('.encoding.pickle'),'wb'))
+                # cached
+                if filenames_encoded:
+                    # feat_arr.extend([pickle.load(open(i.with_suffix('.encoding.pickle'),'rb')) for i in filenames_encoded])
+                    all_filenames.extend(filenames_encoded)
                 if bad_images:
-                    bad_im_count += 1
+                    bad_im_count += len(bad_images)
+                    all_bad_images.extend(bad_images)
+                # if len(all_filenames) > 200_000:
+                #     break
+        self.logger.info("End: Image encoding generation")
+
+
+        self.logger.info("Start: Loading encodings from cache...")
+        feat_arr = [ pickle.load(open(i.with_suffix('.encoding.pickle'),'rb')) for i in tqdm.tqdm(all_filenames) ]
+
 
         if bad_im_count:
-            self.logger.info(
-                f"Found {bad_im_count} bad images, ignoring for encoding generation .."
+            self.logger.warning(
+                f"Found {bad_im_count} bad images, ignoring for encoding generation: {all_bad_images}",
             )
 
         feat_vec = torch.stack(feat_arr).squeeze()
@@ -164,7 +188,7 @@ class CNN:
             else feat_vec.detach().cpu().numpy()
         )
         valid_image_files = [filename for filename in all_filenames if filename]
-        self.logger.info("End: Image encoding generation")
+        self.logger.info("End: Loading encodings from cache")
 
         filenames = generate_relative_names(image_dir, valid_image_files)
         if (

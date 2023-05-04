@@ -1,4 +1,6 @@
 from pathlib import PurePath
+import os
+import pickle
 from typing import Dict, Callable, Optional, List, Tuple
 
 import numpy as np
@@ -28,6 +30,9 @@ class ImgDataset(Dataset):
         return len(self.image_files)
 
     def __getitem__(self, item) -> Dict:
+        filename_encoded = self.image_files[item].with_suffix('.encoding.pickle')
+        if os.path.exists(filename_encoded):
+            return {'filename': self.image_files[item]}
         im_arr = load_image(self.image_files[item], target_size=None, grayscale=None)
         if im_arr is not None:
             img = self.basenet_preprocess(im_arr)
@@ -37,16 +42,19 @@ class ImgDataset(Dataset):
 
 
 def _collate_fn(batch: List[Dict]) -> Tuple[torch.tensor, str, str]:
-    ims, filenames, bad_images = [], [], []
+    ims, filenames, bad_images, filenames_encoded = [], [], [], []
 
     for b in batch:
-        im = b['image']
-        if im is not None:
-            ims.append(im)
-            filenames.append(b['filename'])
+        if not 'image' in b:
+            filenames_encoded.append(b['filename'])
         else:
-            bad_images.append(b['filename'])
-    return torch.stack(ims), filenames, bad_images
+            im = b['image']
+            if im is not None:
+                ims.append(im)
+                filenames.append(b['filename'])
+            else:
+                bad_images.append(b['filename'])
+    return torch.stack(ims) if ims else None, filenames, bad_images, filenames_encoded
 
 
 def img_dataloader(
