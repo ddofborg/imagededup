@@ -159,7 +159,7 @@ class CNN:
                     # cacehe all new encodings
                     for _arr, _filename in zip(arr, filenames):
                         # self.logger.info('Caching: %s', _filename)
-                        pickle.dump(_arr, open(_filename.with_suffix('.encoding.pickle'),'wb'))
+                        pickle.dump(_arr.tolist(), open(_filename.with_suffix('.encoding.pickle'),'wb'))
                 # cached
                 if filenames_encoded:
                     # feat_arr.extend([pickle.load(open(i.with_suffix('.encoding.pickle'),'rb')) for i in filenames_encoded])
@@ -173,7 +173,7 @@ class CNN:
 
 
         self.logger.info("Start: Loading encodings from cache...")
-        feat_arr = [ pickle.load(open(i.with_suffix('.encoding.pickle'),'rb')) for i in tqdm.tqdm(all_filenames) ]
+        feat_arr = [ torch.Tensor(pickle.load(open(i.with_suffix('.encoding.pickle'),'rb'))) for i in tqdm.tqdm(all_filenames) ]
 
 
         if bad_im_count:
