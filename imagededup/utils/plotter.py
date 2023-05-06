@@ -7,6 +7,11 @@ from typing import Dict, Union, List
 import numpy as np
 from PIL import Image
 
+import os
+def remove_extension(filename):
+    # Split the filename into a base name and extension, then return the base name
+    base_name, _ = os.path.splitext(filename)
+    return base_name
 
 def _formatter(val: Union[int, np.float32]):
     """
@@ -45,7 +50,7 @@ def _plot_images(
         gs[0, 1:3]
     )  # Always plot the original image in the middle of top row
     ax.imshow(Image.open(image_dir / orig))
-    ax.set_title('Original Image: {}'.format(orig))
+    ax.set_title('g:id={}'.format(remove_extension(orig)))
     ax.axis('off')
 
     for i in range(0, n_ims):
@@ -56,7 +61,7 @@ def _plot_images(
         if scores:
             ax.imshow(Image.open(image_dir / image_list[i][0]))
             val = _formatter(image_list[i][1])
-            title = ' '.join([image_list[i][0], f'({val})'])
+            title = ' '.join([remove_extension(image_list[i][0]), f'({val})'])
         else:
             ax.imshow(Image.open(image_dir / image_list[i]))
             title = image_list[i]
