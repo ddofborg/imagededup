@@ -50,7 +50,7 @@ def _plot_images(
         gs[0, 1:3]
     )  # Always plot the original image in the middle of top row
     ax.imshow(Image.open(image_dir / orig))
-    ax.set_title('g:id={}'.format(remove_extension(orig)))
+    ax.set_title('id={}'.format(remove_extension(orig)))
     ax.axis('off')
 
     for i in range(0, n_ims):
